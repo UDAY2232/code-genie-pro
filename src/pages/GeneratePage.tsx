@@ -7,6 +7,8 @@ import Editor from "@monaco-editor/react";
 import { Code2, Copy, Download, Sparkles, Loader2, FileText, FileCode } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/context/ThemeContext";
+import { useAuth } from "@/context/AuthContext";
+import { savePrompt, getTodayPromptCount } from "@/lib/store";
 
 const languages = [
   { value: "python", label: "Python", ext: ".py" },
@@ -18,6 +20,7 @@ const languages = [
 
 export default function GeneratePage() {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const [prompt, setPrompt] = useState("");
   const [language, setLanguage] = useState("python");
   const [generatedCode, setGeneratedCode] = useState("");
@@ -27,13 +30,36 @@ export default function GeneratePage() {
 
   const handleGenerate = async () => {
     if (!prompt.trim()) { toast.error("Please enter a prompt"); return; }
+    if (!user) return;
+
+    // Check free plan limit
+    if (user.plan === "free") {
+      const todayCount = getTodayPromptCount(user.id);
+      if (todayCount >= 5) {
+        toast.error("Daily limit reached! Upgrade to Pro for unlimited prompts.");
+        return;
+      }
+    }
+
     setLoading(true);
     setExplanation("");
 
-    // Mock generation - will be replaced with Lovable AI edge function
     await new Promise((r) => setTimeout(r, 1500));
     const mockCode = getMockCode(language, prompt);
     setGeneratedCode(mockCode);
+
+    // Save to shared store
+    savePrompt({
+      id: crypto.randomUUID(),
+      userId: user.id,
+      userEmail: user.email,
+      userName: user.name,
+      prompt: prompt.trim(),
+      language,
+      generatedCode: mockCode,
+      createdAt: new Date().toISOString(),
+    });
+
     setLoading(false);
     toast.success("Code generated!");
   };
@@ -81,9 +107,7 @@ export default function GeneratePage() {
               <div className="space-y-2">
                 <Label>Language</Label>
                 <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {languages.map((l) => (
                       <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
@@ -178,7 +202,7 @@ export default function GeneratePage() {
 
 function getMockCode(language: string, prompt: string): string {
   const snippets: Record<string, string> = {
-    python: `# ${prompt}\n\ndef solution():\n    \"\"\"\n    AI-generated solution for: ${prompt}\n    \"\"\"\n    # Implementation\n    data = []\n    \n    for i in range(10):\n        data.append(i * 2)\n    \n    return sorted(data, reverse=True)\n\n\nif __name__ == "__main__":\n    result = solution()\n    print(f"Result: {result}")`,
+    python: `# ${prompt}\n\ndef solution():\n    \"\"\"\n    AI-generated solution for: ${prompt}\n    \"\"\"\n    data = []\n    \n    for i in range(10):\n        data.append(i * 2)\n    \n    return sorted(data, reverse=True)\n\n\nif __name__ == "__main__":\n    result = solution()\n    print(f"Result: {result}")`,
     javascript: `// ${prompt}\n\nfunction solution() {\n  /**\n   * AI-generated solution for: ${prompt}\n   */\n  const data = [];\n  \n  for (let i = 0; i < 10; i++) {\n    data.push(i * 2);\n  }\n  \n  return data.sort((a, b) => b - a);\n}\n\nconsole.log("Result:", solution());`,
     java: `// ${prompt}\n\npublic class Solution {\n    /**\n     * AI-generated solution for: ${prompt}\n     */\n    public static int[] solution() {\n        int[] data = new int[10];\n        \n        for (int i = 0; i < 10; i++) {\n            data[i] = i * 2;\n        }\n        \n        java.util.Arrays.sort(data);\n        return data;\n    }\n    \n    public static void main(String[] args) {\n        int[] result = solution();\n        System.out.println(java.util.Arrays.toString(result));\n    }\n}`,
     cpp: `// ${prompt}\n\n#include <iostream>\n#include <vector>\n#include <algorithm>\n\nusing namespace std;\n\nvector<int> solution() {\n    /**\n     * AI-generated solution for: ${prompt}\n     */\n    vector<int> data;\n    \n    for (int i = 0; i < 10; i++) {\n        data.push_back(i * 2);\n    }\n    \n    sort(data.rbegin(), data.rend());\n    return data;\n}\n\nint main() {\n    auto result = solution();\n    for (int x : result) cout << x << " ";\n    return 0;\n}`,
