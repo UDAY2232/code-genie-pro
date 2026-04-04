@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       id: "1",
       name: email.split("@")[0],
       email,
-      role: email.includes("admin") ? "admin" : "user",
+      role: email === "prasanna23537@gmail.com" ? "admin" : "user",
       plan: "free",
     };
     setUser(mockUser);
