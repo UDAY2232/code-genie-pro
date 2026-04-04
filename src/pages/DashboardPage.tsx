@@ -2,21 +2,32 @@ import { useAuth } from "@/context/AuthContext";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Code2, Zap, History, ArrowRight, TrendingUp } from "lucide-react";
+import { getPromptsByUser, getTodayPromptCount } from "@/lib/store";
 
 export default function DashboardPage() {
   const { user } = useAuth();
 
+  const userPrompts = user ? getPromptsByUser(user.id) : [];
+  const todayCount = user ? getTodayPromptCount(user.id) : 0;
+
   const stats = [
-    { label: "Prompts Today", value: "3", max: user?.plan === "free" ? "/5" : "∞", icon: Code2, color: "text-primary" },
-    { label: "Total Generated", value: "47", icon: TrendingUp, color: "text-success" },
+    { label: "Prompts Today", value: String(todayCount), max: user?.plan === "free" ? "/5" : "∞", icon: Code2, color: "text-primary" },
+    { label: "Total Generated", value: String(userPrompts.length), icon: TrendingUp, color: "text-success" },
     { label: "Plan", value: user?.plan === "pro" ? "Pro" : "Free", icon: Zap, color: "text-warning" },
   ];
 
-  const recentPrompts = [
-    { prompt: "Create a REST API in Node.js with Express", language: "JavaScript", time: "2 hours ago" },
-    { prompt: "Binary search implementation", language: "Python", time: "5 hours ago" },
-    { prompt: "React custom hook for debounce", language: "JavaScript", time: "1 day ago" },
-  ];
+  const recentPrompts = userPrompts.slice(0, 5);
+
+  const formatDate = (iso: string) => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -25,7 +36,6 @@ export default function DashboardPage() {
         <p className="mt-1 text-muted-foreground">Here's an overview of your coding activity.</p>
       </div>
 
-      {/* Stats */}
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-xl border border-border/50 bg-card p-6 transition-all hover:shadow-md">
@@ -40,7 +50,6 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Quick Actions */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2">
         <Link to="/generate" className="group rounded-xl border border-primary/20 bg-primary/5 p-6 transition-all hover:bg-primary/10 hover:shadow-glow">
           <div className="flex items-center gap-3">
@@ -68,27 +77,33 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Recent Prompts */}
       <div className="rounded-xl border border-border/50 bg-card">
         <div className="border-b border-border/50 p-4">
           <h2 className="font-semibold">Recent Prompts</h2>
         </div>
-        <div className="divide-y divide-border/50">
-          {recentPrompts.map((p, i) => (
-            <div key={i} className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-sm font-medium">{p.prompt}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{p.time}</p>
+        {recentPrompts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Code2 className="mb-3 h-10 w-10 text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">No prompts yet. Start generating!</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border/50">
+            {recentPrompts.map((p) => (
+              <div key={p.id} className="flex items-center justify-between p-4">
+                <div>
+                  <p className="text-sm font-medium">{p.prompt}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{formatDate(p.createdAt)}</p>
+                </div>
+                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">{p.language}</span>
               </div>
-              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">{p.language}</span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {user?.plan === "free" && (
         <div className="mt-8 rounded-xl border border-warning/30 bg-warning/5 p-6 text-center">
-          <p className="font-medium">You've used 3 of 5 free prompts today</p>
+          <p className="font-medium">You've used {todayCount} of 5 free prompts today</p>
           <p className="mt-1 text-sm text-muted-foreground">Upgrade to Pro for unlimited generations</p>
           <Link to="/pricing"><Button variant="hero" size="sm" className="mt-4">Upgrade to Pro</Button></Link>
         </div>

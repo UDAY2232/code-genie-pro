@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { saveUser } from "@/lib/store";
 
 interface User {
   id: string;
@@ -19,7 +20,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock auth for now - will be replaced with Lovable Cloud
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,8 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, _password: string) => {
+    const id = crypto.randomUUID();
     const mockUser: User = {
-      id: "1",
+      id,
       name: email.split("@")[0],
       email,
       role: email === "prasanna23537@gmail.com" ? "admin" : "user",
@@ -42,18 +43,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     setUser(mockUser);
     localStorage.setItem("codegenie_user", JSON.stringify(mockUser));
+    saveUser({ ...mockUser, createdAt: new Date().toISOString() });
   };
 
   const register = async (name: string, email: string, _password: string) => {
+    const id = crypto.randomUUID();
     const mockUser: User = {
-      id: "1",
+      id,
       name,
       email,
-      role: "user",
+      role: email === "prasanna23537@gmail.com" ? "admin" : "user",
       plan: "free",
     };
     setUser(mockUser);
     localStorage.setItem("codegenie_user", JSON.stringify(mockUser));
+    saveUser({ ...mockUser, createdAt: new Date().toISOString() });
   };
 
   const logout = () => {
